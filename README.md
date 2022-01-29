@@ -12,9 +12,9 @@ Player can choose on which Instance they want to play.
 Every Entity which is not in the same Instance than the Player wont be networked to the Player so he cant interact with it.
 
 
-Complete Example can be seen here:
+Complete Show Off can be seen here:
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/33GMKenR2-0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+https://www.youtube.com/watch?v=33GMKenR2-0
 
 
 For example, 2 or more TTT Rounds could be played parallel on one Server with multiple Instances (all rounds would be on the same Map, no server can load 2 maps at the same time).This would just need some edits on the TTT gamemode.
