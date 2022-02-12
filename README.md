@@ -2,6 +2,9 @@
 
 GMod Instances is a System to create Multiple Instances on one Server.
 
+This System creates multiple Instances by preventing the server to network the entities which are not in the same instance as the player.
+That means the Entities still exist on the Server, but not for the Client.
+
 Player can choose on which Instance they want to play.
 
 2 Player who are not in the same Instance can't
