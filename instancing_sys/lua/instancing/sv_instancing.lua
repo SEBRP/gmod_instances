@@ -2,7 +2,7 @@ local entmeta = FindMetaTable("Entity")
 local plymeta = FindMetaTable("Player")
 util.AddNetworkString("Yolo.Instancing")
 
-blacklist = {
+local blacklist = {
 "func",
 "info",
 "env",
