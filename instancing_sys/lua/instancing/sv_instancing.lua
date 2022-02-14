@@ -2,6 +2,21 @@ local entmeta = FindMetaTable("Entity")
 local plymeta = FindMetaTable("Player")
 util.AddNetworkString("Yolo.Instancing")
 
+blacklist = {
+"func",
+"info",
+"env",
+"worldspawn,soundent",
+"player_manager",
+"gmod_gamerules",
+"scene_manager",
+"info_teleport_destination",
+"trigger_teleport",
+"logic",
+"hint",
+"filter_activator_name"
+}
+
 function RecursiveSetPreventTransmit(ent, ply, stopTransmitting)
     if ent != ply and IsValid(ent) and IsValid(ply) then
         ent:SetPreventTransmit(ply, stopTransmitting)
@@ -38,6 +53,7 @@ function entmeta:GetInstance()
 end
 
 function plymeta:SetInstanceInternal(instance)
+    local allow = true
     self:SetNWInt("Instance", instance)
     -- remove us from all other players who are not in our Instance
     for _, ply in ipairs(player.GetAll()) do
@@ -45,7 +61,18 @@ function plymeta:SetInstanceInternal(instance)
     end
     -- stopp networking all entities who are not in our Instance
     for _, ent in ipairs(ents.GetAll()) do
-        RecursiveSetPreventTransmit(ent, self, instance != ent:GetInstance())
+        allow = true
+        if (ent:CreatedByMap()) then
+            allow = false
+        end
+        for k,v in ipairs(blacklist) do
+            if (string.find(ent:GetClass(),v)) then
+                allow=false
+            end
+        end
+        if (allow) then
+            RecursiveSetPreventTransmit(ent, self, instance != ent:GetInstance())
+        end
     end
 end
 
