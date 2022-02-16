@@ -101,12 +101,21 @@ for _, name in ipairs(b) do
     end)
 end
 
-local c = {"PhysgunPickup", "AllowPlayerPickup", "GravGunPickupAllowed", "PlayerCanPickupWeapon", "PlayerCanPickupItem", "PlayerCanHearPlayersVoice"}
+local c = {"PhysgunPickup", "AllowPlayerPickup", "GravGunPickupAllowed", "PlayerCanPickupWeapon", "PlayerCanPickupItem", "PlayerCanHearPlayersVoice","CanPlayerUnfreeze"}
 for _, name in ipairs(c) do
     hook.Add(name, "Instancing_NoInterAction", function(ply, ent)
         if ply:GetInstance() != ent:GetInstance() then return false end
     end)
 end
+
+hook.Add("CanTool", "Instancing_tool", function(ply, trace)
+    if ply:GetInstance() != trace.Entity:GetInstance() then
+        if !trace.Entity:IsWorld() then
+            return false
+        end
+    end
+end)
+
 
 hook.Add("ShouldCollide", "Instancing_NoCollide", function(ent1, ent2)
     if ent1:GetInstance() != ent2:GetInstance() then
