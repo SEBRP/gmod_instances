@@ -119,6 +119,10 @@ for _, name in ipairs(physgun_hooks) do
     end)
 end
 
+hook.Add("PlayerCanSeePlayersChat", "Instancing_NoInteraction", function(text, teamOnly, receiver, sender)
+    if receiver:GetInstance() != ent:GetInstance() then return false end
+end)
+
 hook.Add("CanTool", "Instancing_Tool", function(ply, trace)
     if ply:GetInstance() != trace.Entity:GetInstance() then
         if !trace.Entity:IsWorld() then
