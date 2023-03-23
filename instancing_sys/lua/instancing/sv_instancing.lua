@@ -1,20 +1,27 @@
+INSTANCE = INSTANCE or {}
+INSTANCE.instance_table = INSTANCE.instance_table or {}
+
+util.AddNetworkString("Yolo.Instancing")
+util.AddNetworkString("Yolo.ChangeInstance")
+
 local entmeta = FindMetaTable("Entity")
 local plymeta = FindMetaTable("Player")
-util.AddNetworkString("Yolo.Instancing")
+
+local default_instance = 1
 
 local blacklist = {
-"func",
-"info",
-"env",
-"worldspawn,soundent",
-"player_manager",
-"gmod_gamerules",
-"scene_manager",
-"info_teleport_destination",
-"trigger_teleport",
-"logic",
-"hint",
-"filter_activator_name"
+    "func",
+    "info",
+    "env",
+    "worldspawn,soundent",
+    "player_manager",
+    "gmod_gamerules",
+    "scene_manager",
+    "info_teleport_destination",
+    "trigger_teleport",
+    "logic",
+    "hint",
+    "filter_activator_name"
 }
 
 function RecursiveSetPreventTransmit(ent, ply, stopTransmitting)
@@ -39,27 +46,39 @@ end
 
 function entmeta:SetInstance(instance)
     RecursiveSetInstance(self, instance)
+    if self:IsPlayer() then
+        local to_stop_ents = {}
+        for _, ent in ipairs(ents.GetAll()) do
+            if ent:GetInstance() != instance then
+                table.insert(to_stop_ents, ent)
+            end
+        end
+        net.Start("Yolo.ChangeInstance")
+            net.WriteInt(instance, 4)
+            net.WriteTable(to_stop_ents)
+        net.Start(self)
+    end
 end
 
 function entmeta:SetInstanceInternal(instance)
-    self:SetNWInt("Instance", instance)
+    INSTANCE.instance_table[self] = instance
     for _, ply in ipairs(player.GetAll()) do
         RecursiveSetPreventTransmit(self, ply, instance != ply:GetInstance())
     end
 end
 
 function entmeta:GetInstance()
-    return self:GetNWInt("Instance", 1 )
+    return INSTANCE.instance_table[self] or default_instance
 end
 
 function plymeta:SetInstanceInternal(instance)
     local allow = true
-    self:SetNWInt("Instance", instance)
+    INSTANCE.instance_table[self] = instance
     -- remove us from all other players who are not in our Instance
     for _, ply in ipairs(player.GetAll()) do
         RecursiveSetPreventTransmit(self, ply, instance != ply:GetInstance())
     end
-    -- stopp networking all entities who are not in our Instance
+    -- stop networking all entities who are not in our Instance
     for _, ent in ipairs(ents.GetAll()) do
         allow = true
         if (ent:CreatedByMap()) then
@@ -67,7 +86,7 @@ function plymeta:SetInstanceInternal(instance)
         end
         for k,v in ipairs(blacklist) do
             if (string.find(ent:GetClass(),v)) then
-                allow=false
+                allow = false
             end
         end
         if (allow) then
@@ -76,46 +95,54 @@ function plymeta:SetInstanceInternal(instance)
     end
 end
 
-for _, ent in ipairs(ents.GetAll()) do
-    ent:SetCustomCollisionCheck(true)
-end
-hook.Add( "OnEntityCreated", "Enable Collision Check", function( ent )
+hook.Add("InitPostEntity", "Instancing_EnableCollisionCheck", function()
+    timer.Simple(0, function()
+        for _, ent in ipairs(ents.GetAll()) do
+            ent:SetCustomCollisionCheck(true)
+        end
+    end)
+end)
+
+hook.Add( "OnEntityCreated", "Instancing_EnableCollisionCheck", function( ent )
     ent:SetCustomCollisionCheck(true)
 end )
 
-hook.Add("PlayerInitialSpawn", "SetInstance", function(ply)
-    ply:SetInstance(1)
+hook.Add("PlayerInitialSpawn", "Instancing_SetInstance", function(ply)
+    ply:SetInstance(default_instance)
 end)
 
-local a = {"PlayerSpawnedEffect", "PlayerSpawnedProp", "PlayerSpawnedRagdoll"}
-for _, name in ipairs(a) do
+local player_spawned_hooks = {"PlayerSpawnedEffect", "PlayerSpawnedProp", "PlayerSpawnedRagdoll"}
+for _, name in ipairs(player_spawned_hooks) do
     hook.Add(name, "Instancing_Spawning", function(ply, mdl, ent)
         ent:SetInstance(ply:GetInstance())
     end)
 end
 
-local b = {"PlayerSpawnedNPC", "PlayerSpawnedSENT", "PlayerSpawnedSWEP", "PlayerSpawnedVehicle"}
-for _, name in ipairs(b) do
+player_spawned_hooks = {"PlayerSpawnedNPC", "PlayerSpawnedSENT", "PlayerSpawnedSWEP", "PlayerSpawnedVehicle"}
+for _, name in ipairs(player_spawned_hooks) do
     hook.Add(name, "Instancing_Spawning", function(ply, ent)
         ent:SetInstance(ply:GetInstance())
     end)
 end
 
-local c = {"PhysgunPickup", "AllowPlayerPickup", "GravGunPickupAllowed", "PlayerCanPickupWeapon", "PlayerCanPickupItem", "PlayerCanHearPlayersVoice","CanPlayerUnfreeze"}
-for _, name in ipairs(c) do
-    hook.Add(name, "Instancing_NoInterAction", function(ply, ent)
+local physgun_hooks = {"PhysgunPickup", "AllowPlayerPickup", "GravGunPickupAllowed", "PlayerCanPickupWeapon", "PlayerCanPickupItem", "PlayerCanHearPlayersVoice","CanPlayerUnfreeze"}
+for _, name in ipairs(physgun_hooks) do
+    hook.Add(name, "Instancing_NoInteraction", function(ply, ent)
         if ply:GetInstance() != ent:GetInstance() then return false end
     end)
 end
 
-hook.Add("CanTool", "Instancing_tool", function(ply, trace)
+hook.Add("PlayerCanSeePlayersChat", "Instancing_NoInteraction", function(text, teamOnly, receiver, sender)
+    if receiver:GetInstance() != ent:GetInstance() then return false end
+end)
+
+hook.Add("CanTool", "Instancing_Tool", function(ply, trace)
     if ply:GetInstance() != trace.Entity:GetInstance() then
         if !trace.Entity:IsWorld() then
             return false
         end
     end
 end)
-
 
 hook.Add("ShouldCollide", "Instancing_NoCollide", function(ent1, ent2)
     if ent1:GetInstance() != ent2:GetInstance() then
@@ -125,6 +152,45 @@ hook.Add("ShouldCollide", "Instancing_NoCollide", function(ent1, ent2)
     end
 end)
 
+local CAMI_in_use = false
+
+hook.Add("Initialize", "Instancing_Init", function()
+    timer.Simple(0, function()
+        if CAMI and istable(CAMI) then
+            CAMI.RegisterPrivilege({
+                Name = "SwitchInstance",
+                MinAccess = "superadmin",
+                Description = "Allows player to switch instance",
+            })
+            CAMI_in_use = true
+        end
+    end)
+end)
+
+hook.Add("PlayerSay", "Instancing_OpenInstancePanel", function(ply, msg)
+    local args = msg:Split(" ")
+    local cmd = args[1]:lower()
+    if cmd == "!instance" then
+        if (CAMI_in_use and !CAMI.PlayerHasAccess(ply, "SwitchInstance")) or !ply:IsSuperAdmin() then return "" end
+        net.Start("Yolo.Instancing")
+            net.WriteInt(INSTANCE.instance_table[ply] or default_instance, 4)
+        net.Send(ply)
+
+        return ""
+    end
+    if cmd == "!forceinstance" then
+        if (CAMI_in_use and !CAMI.PlayerHasAccess(ply, "SwitchInstance")) or !ply:IsSuperAdmin() then return "" end
+        local new_instance = args[2] or default_instance
+        local trace_ent = ply:GetEyeTrace().Entity
+
+        if !trace_ent or !IsValid(trace_ent) then return "" end
+        trace_ent:SetInstance(new_instance)
+        ply:ChatPrint("[INSTANCE]: Set instance of the " .. (trace_ent:IsPlayer() and "Player" or "Entity") .. " to " .. new_instance)
+    end
+end)
+
 net.Receive("Yolo.Instancing", function(len, ply)
-    ply:SetInstance(net.ReadInt(4) or 1)
+    if (CAMI_in_use and !CAMI.PlayerHasAccess(ply, "SwitchInstance")) or !ply:IsSuperAdmin() then return end
+    local new_instance = net.ReadInt(4) or default_instance
+    ply:SetInstance(new_instance)
 end)

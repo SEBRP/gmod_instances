@@ -1,4 +1,9 @@
-concommand.Add("instance", function()
+INSTANCE = INSTANCE or {}
+INSTANCE.current_instance = 1
+
+net.Receive("Yolo.Instancing", function()
+    local instance = net.ReadInt(4)
+    INSTANCE.current_instance = instance
 
     local f = vgui.Create("DFrame")
     f:SetSize(200, 100)
@@ -10,7 +15,7 @@ concommand.Add("instance", function()
     n:SetTall(50)
     n:SetFont("CloseCaption_Normal")
     n:SetNumeric(true)
-    n:SetText(LocalPlayer():GetNWInt("Instance", 1))
+    n:SetText(instance)
 
     local b = vgui.Create("DButton", f)
     b:Dock(FILL)
@@ -18,8 +23,17 @@ concommand.Add("instance", function()
     b.DoClick = function()
         f:Remove()
         net.Start("Yolo.Instancing")
-        net.WriteInt(n:GetInt() or 1, 4)
+            net.WriteInt(n:GetInt() or 1, 4)
         net.SendToServer()
     end
+end)
 
+net.Receive("Yolo.ChangeInstance", function()
+    local instance = net.ReadInt(4)
+    local to_stop_ents = net.ReadTable()
+
+    INSTANCE.current_instance = instance
+    for _, ent in ipairs(to_stop_ents) do
+        ent:StopSound("*")
+    end
 end)
