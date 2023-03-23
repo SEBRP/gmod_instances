@@ -2,6 +2,7 @@ INSTANCE = INSTANCE or {}
 INSTANCE.instance_table = INSTANCE.instance_table or {}
 
 util.AddNetworkString("Yolo.Instancing")
+util.AddNetworkString("Yolo.ChangeInstance")
 
 local entmeta = FindMetaTable("Entity")
 local plymeta = FindMetaTable("Player")
@@ -45,6 +46,18 @@ end
 
 function entmeta:SetInstance(instance)
     RecursiveSetInstance(self, instance)
+    if self:IsPlayer() then
+        local to_stop_ents = {}
+        for _, ent in ipairs(ents.GetAll()) do
+            if ent:GetInstance() != instance then
+                table.insert(to_stop_ents, ent)
+            end
+        end
+        net.Start("Yolo.ChangeInstance")
+            net.WriteInt(instance, 4)
+            net.WriteTable(to_stop_ents)
+        net.Start(self)
+    end
 end
 
 function entmeta:SetInstanceInternal(instance)
