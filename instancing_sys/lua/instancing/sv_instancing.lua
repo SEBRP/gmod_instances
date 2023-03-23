@@ -6,18 +6,18 @@ local default_instance = 1
 local instance_table = {}
 
 local blacklist = {
-"func",
-"info",
-"env",
-"worldspawn,soundent",
-"player_manager",
-"gmod_gamerules",
-"scene_manager",
-"info_teleport_destination",
-"trigger_teleport",
-"logic",
-"hint",
-"filter_activator_name"
+    "func",
+    "info",
+    "env",
+    "worldspawn,soundent",
+    "player_manager",
+    "gmod_gamerules",
+    "scene_manager",
+    "info_teleport_destination",
+    "trigger_teleport",
+    "logic",
+    "hint",
+    "filter_activator_name"
 }
 
 function RecursiveSetPreventTransmit(ent, ply, stopTransmitting)
@@ -135,30 +135,42 @@ end)
 local CAMI_in_use = false
 
 hook.Add("Initialize", "Instancing_Init", function()
-    if CAMI and istable(CAMI) then
-        CAMI.RegisterPrivilege({
-            Name = "SwitchInstance",
-            MinAccess = "superadmin",
-            Description = "Allows player to switch instance",
-        })
-        CAMI_in_use = true
-    end
+    timer.Simple(0, function()
+        if CAMI and istable(CAMI) then
+            CAMI.RegisterPrivilege({
+                Name = "SwitchInstance",
+                MinAccess = "superadmin",
+                Description = "Allows player to switch instance",
+            })
+            CAMI_in_use = true
+        end
+    end)
 end)
 
 hook.Add("PlayerSay", "Instancing_OpenInstancePanel", function(ply, msg)
-    if msg == "!instance" then
-        if (CAMI_in_use and CAMI.PlayerHasAccess(ply, "SwitchInstance")) or ply:IsSuperAdmin() then
-            net.Start("Yolo.Instancing")
-                net.WriteInt(instance_table[ply] or default_instance, 4)
-            net.Send(ply)
+    local args = msg:Split(" ")
+    local cmd = args[1]:lower()
+    if cmd == "!instance" then
+        if (CAMI_in_use and !CAMI.PlayerHasAccess(ply, "SwitchInstance")) or !ply:IsSuperAdmin() then return "" end
+        net.Start("Yolo.Instancing")
+            net.WriteInt(instance_table[ply] or default_instance, 4)
+        net.Send(ply)
 
-            return ""
-        end
+        return ""
+    end
+    if cmd == "!forceinstance" then
+        if (CAMI_in_use and !CAMI.PlayerHasAccess(ply, "SwitchInstance")) or !ply:IsSuperAdmin() then return "" end
+        local new_instance = args[2] or default_instance
+        local trace_ent = ply:GetEyeTrace().Entity
+
+        if !trace_ent or !IsValid(trace_ent) then return "" end
+        trace_ent:SetInstance(new_instance)
+        ply:ChatPrint("[INSTANCE]: Set instance of the " .. (trace_ent:IsPlayer() and "Player" or "Entity") .. " to " .. new_instance)
     end
 end)
 
 net.Receive("Yolo.Instancing", function(len, ply)
-    if (CAMI_in_use and not CAMI.PlayerHasAccess(ply, "SwitchInstance")) or not ply:IsSuperAdmin() then return end
-    local new_instance = net.ReadInt(4)
+    if (CAMI_in_use and !CAMI.PlayerHasAccess(ply, "SwitchInstance")) or !ply:IsSuperAdmin() then return end
+    local new_instance = net.ReadInt(4) or default_instance
     ply:SetInstance(new_instance)
 end)
