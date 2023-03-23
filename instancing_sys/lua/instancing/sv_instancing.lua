@@ -1,9 +1,12 @@
-local entmeta = FindMetaTable("Entity")
-local plymeta = FindMetaTable("Player")
+INSTANCE = INSTANCE or {}
+INSTANCE.instance_table = INSTANCE.instance_table or {}
+
 util.AddNetworkString("Yolo.Instancing")
 
+local entmeta = FindMetaTable("Entity")
+local plymeta = FindMetaTable("Player")
+
 local default_instance = 1
-local instance_table = {}
 
 local blacklist = {
     "func",
@@ -111,7 +114,7 @@ end
 
 local physgun_hooks = {"PhysgunPickup", "AllowPlayerPickup", "GravGunPickupAllowed", "PlayerCanPickupWeapon", "PlayerCanPickupItem", "PlayerCanHearPlayersVoice","CanPlayerUnfreeze"}
 for _, name in ipairs(physgun_hooks) do
-    hook.Add(name, "Instancing_NoInterAction", function(ply, ent)
+    hook.Add(name, "Instancing_NoInteraction", function(ply, ent)
         if ply:GetInstance() != ent:GetInstance() then return false end
     end)
 end
