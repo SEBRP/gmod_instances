@@ -48,19 +48,19 @@ function entmeta:SetInstance(instance)
 end
 
 function entmeta:SetInstanceInternal(instance)
-    instance_table[self] = instance
+    INSTANCE.instance_table[self] = instance
     for _, ply in ipairs(player.GetAll()) do
         RecursiveSetPreventTransmit(self, ply, instance != ply:GetInstance())
     end
 end
 
 function entmeta:GetInstance()
-    return instance_table[self] or default_instance
+    return INSTANCE.instance_table[self] or default_instance
 end
 
 function plymeta:SetInstanceInternal(instance)
     local allow = true
-    instance_table[self] = instance
+    INSTANCE.instance_table[self] = instance
     -- remove us from all other players who are not in our Instance
     for _, ply in ipairs(player.GetAll()) do
         RecursiveSetPreventTransmit(self, ply, instance != ply:GetInstance())
@@ -160,7 +160,7 @@ hook.Add("PlayerSay", "Instancing_OpenInstancePanel", function(ply, msg)
     if cmd == "!instance" then
         if (CAMI_in_use and !CAMI.PlayerHasAccess(ply, "SwitchInstance")) or !ply:IsSuperAdmin() then return "" end
         net.Start("Yolo.Instancing")
-            net.WriteInt(instance_table[ply] or default_instance, 4)
+            net.WriteInt(INSTANCE.instance_table[ply] or default_instance, 4)
         net.Send(ply)
 
         return ""
