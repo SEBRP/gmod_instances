@@ -56,7 +56,7 @@ function entmeta:SetInstance(instance)
         net.Start("Yolo.ChangeInstance")
             net.WriteInt(instance, 4)
             net.WriteTable(to_stop_ents)
-        net.Start(self)
+        net.Send(self)
     end
 end
 
